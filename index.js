@@ -13,7 +13,11 @@ router.post('', (req, res, next) => {
         res.status(404).json({ errorMessage: "Please provide name and bio for the user." })
     }
     db.insert(req.body).then((result) => {
-        res.status(201).json(result)
+        db.findById(result.id).then((result) => {
+            res.status(201).json(result)
+        }).catch((err) => {
+            return new Error(err);
+        });
     }).catch((err) => {
         console.log(err)
         res.status(500).json({ error: "There was an error while saving the user to the database." })
@@ -38,11 +42,37 @@ router.get('/:id', (req, res, next) => {
         res.status(500).json({ error: "The user information could not be retrieved." })
     });
 })
-router.delete('/:id', (req, res, next) => {
-    
+router.delete('/:id', async (req, res, next) => {
+    const user = await db.findById(req.params.id);
+    if (!user) {
+        res.status(404).json({ message: "The user with the specified ID does not exist." })
+    }
+    db.remove(req.params.id).then((result) => {
+        res.status(200).json(result)
+    }).catch((err) => {
+        console.log(err)
+        res.status(500).json({ error: "The user could not be removed" })
+    });
 })
-router.put('/:id', (req, res, next) => {
-    
+router.put('/:id', async (req, res, next) => {
+    if (!req.body.name || !req.body.bio ) {
+        res.status(404).json({ errorMessage: "Please provide name and bio for the user." })
+    }
+    const user = await db.findById(req.params.id);
+    if (!user) {
+        res.status(404).json({ message: "The user with the specified ID does not exist." })
+    }
+    try {
+        const result = await db.update(req.params.id, req.body);
+        const newUser = await db.findById(req.params.id);
+        if (!result || !newUser) {
+            res.status(500).json({ error: "The user information could not be modified." })
+        }
+        res.status(200).json(newUser)
+    }catch(err) {
+        console.log(err)
+        res.status(500).json({ error: "The user information could not be modified." })
+    }
 })
 
 
